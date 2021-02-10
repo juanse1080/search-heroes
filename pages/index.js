@@ -1,65 +1,97 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import { useEffect, useState } from "react";
 
-export default function Home() {
+import axios from "axios";
+
+import Container from "@material-ui/core/Container";
+import Grid from "@material-ui/core/Grid";
+import Box from "@material-ui/core/Box";
+
+import Hero, { LoadingHero } from "@/components/Hero";
+import Search from "@/components/Search";
+import AppBar from "@/components/AppBar";
+import Alert from "@/components/Alert";
+
+import useBoolean from "@/hooks/useBoolean";
+import useQuery from "@/hooks/useQuery";
+
+import useStyles from "@/styles/pages";
+
+const domain = "http://gateway.marvel.com/v1/public/characters";
+const publicKey = "641f83bb2b765099718a0c6f6281a4fb";
+const hash = "cd89af012b96a80c91ae2d7293f36f1c";
+
+const heroes = () => {
+  const classes = useStyles();
+  const {
+    boolean: loading,
+    setToFalse: setLoadingFalse,
+    setToTrue: setLoadingTrue,
+  } = useBoolean(true);
+
+  const [heroes, setHeroes] = useState([]);
+  const { query, handleQuery } = useQuery("");
+
+  useEffect(() => {
+    const url =
+      query.length > 0
+        ? `${domain}?nameStartsWith=${query}&ts=1&limit=12&apikey=${publicKey}&hash=${hash}`
+        : `${domain}?ts=1&limit=12&apikey=${publicKey}&hash=${hash}`;
+    setLoadingTrue();
+    axios
+      .get(url, {})
+      .then(({ data }) => {
+        const { results } = data.data;
+        setHeroes(results);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .then(() => {
+        console.log("entro");
+        setLoadingFalse();
+      });
+  }, [query]);
+
+  const showAlert = heroes.length === 0 && !loading;
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
+    <>
+      <Box className={classes.content}>
+        <AppBar />
+        <Search value={query} onChange={handleQuery} />
+        <Container maxWidth="lg">
+          {showAlert && (
+            <Box display="flex" justifyContent="center">
+              <Alert severity="info" message="no heroes found" />
+            </Box>
+          )}
+          <Grid container spacing={3}>
+            {!loading
+              ? heroes.map((hero) => (
+                  <Grid key={hero.id} item lg={3} md={4} sm={6} xs={12}>
+                    <Hero hero={hero} />
+                  </Grid>
+                ))
+              : new Array(12).fill(0).map((item, idx) => (
+                  <Grid
+                    key={`${item}.${idx}`}
+                    item
+                    lg={3}
+                    md={4}
+                    sm={6}
+                    xs={12}
+                  >
+                    <LoadingHero />
+                  </Grid>
+                ))}
+          </Grid>
+        </Container>
+        <Box pt={5} />
+      </Box>
+    </>
+  );
+};
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+heroes.propTypes = {};
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
-    </div>
-  )
-}
+export default heroes;
